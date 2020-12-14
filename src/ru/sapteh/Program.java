@@ -1,77 +1,76 @@
 package ru.sapteh;
 
 import java.io.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class Program {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SQLException {
 
-        //Create File
 
-        File file = new File("AutoList.txt");
-        if (file.createNewFile()){
-            System.out.println("File created");
-        }else {
-            System.out.println("File not create");
-        }
+        Database database = new Database();
+
+        Connection connection = database.getConnect();
+
+        String sql = "SELECT * FROM auto_table";
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery();
+        List<Auto> autos = new ArrayList<>();
+
         if (args.length == 0){
             return;
         }
 
-        List<Auto> autos = new ArrayList<>();
-        //Reading file and write list
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))){
-            while (reader.ready()){
-                String[] read = reader.readLine().split(" ");
-                Auto auto = new Auto(Integer.parseInt(read[0]),read[1],read[2],read[3],read[4],read[5]);
-                autos.add(auto);
-            }
-        }
-
-        //Reading from Terminale
-
-        if ("-c".equals(args[0])){
-            int id = 0;
-            for (Auto auto : autos){
-                if (auto.getId()>id){
-                    id = auto.getId();
-                }
-            }
-            String marka = args[1];
-            String model = args[2];
-            String proizvoditel = args[3];
-            String year = args[4];
-            String color = args[5];
-
-            Auto auto = new Auto(++id,marka,model,proizvoditel,year,color);
+        while(resultSet.next()){
+            int id = resultSet.getInt(1);
+            String marka = resultSet.getString(2);
+            String model = resultSet.getString(3);
+            String proizvoditel = resultSet.getString(4);
+            String years = resultSet.getString(5);
+            String color = resultSet.getString(6);
+            Auto auto = new Auto(id,marka,model,proizvoditel,years,color);
             autos.add(auto);
         }
+
+        try(FileWriter fileWriter = new FileWriter("auto_List.txt")){
+            for (Auto auto : autos){
+                fileWriter.write(auto.toString());
+                fileWriter.write("\n");
+            }
+        }
+
+        for(Auto auto : autos){
+            System.out.println(auto.toString());
+        }
+
+//        if ("-c".equals(args[0])){
+//            String sql1 = "INSERT INTO auto_table(marka, model, proizvoditel, years, color) VALUES (?,?,?,?,?)";
+//            PreparedStatement statement1 = connection.prepareStatement(sql1);
+//            statement1.setString(1, args[1].trim());
+//            statement1.setString(2, args[2].trim());
+//            statement1.setString(3, args[3].trim());
+//            statement1.setString(4, args[4].trim());
+//            statement1.setString(5, args[5].trim());
+//            int res = statement1.executeUpdate();
+//            System.out.println(res);
+//
+////            ResultSet genKey = statement.getGeneratedKeys();
+////            int id = 0;
+////            if(genKey.next()){
+////                id = genKey.getInt(1);
+////            }
+//
+//        }
+
         if ("-d".equals(args[0])){
-            int id = Integer.parseInt(args[1]);
-            autos.removeIf(auto -> auto.getId() == id);
+            String del = "DELETE FROM auto_table WHERE id = ?";
+            PreparedStatement statement2 = connection.prepareStatement(del);
+            statement2.setString(1,args[1]);
+            statement2.executeUpdate();
         }
-
-        if ("-u".equals(args[0])){
-            int id = Integer.parseInt(args[1]);
-            for (Auto auto : autos){
-                if (auto.getId() == id){
-                    autos.set(id-1, new Auto(Integer.parseInt(args[1]),
-                            args[2],
-                            args[3],
-                            args[4],
-                            args[5],
-                            args[6]));
-                }
-            }
-        }
-        try(FileWriter fw = new FileWriter(file)){
-            for (Auto auto : autos){
-                fw.write(auto.toString());
-                fw.write("\n");
-            }
-        }
-
+        database.closeConnect(connection);
     }
 
 }
